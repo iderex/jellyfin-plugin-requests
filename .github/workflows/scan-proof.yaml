@@ -1,0 +1,17 @@
+# One planted finding, so the workflow leg of the scan can be seen finding one.
+# Deliberate, and not for merge. Manual trigger only, so nothing runs it.
+name: Scan proof
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  injected:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Interpolate untrusted input straight into a shell
+        run: echo "title is ${{ github.event.pull_request.title }}"

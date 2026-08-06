@@ -23,6 +23,12 @@
                     pluginUniqueId: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1",
                 };
 
+                // One planted finding, so the JavaScript leg of the scan can be seen finding
+                // one. Deliberate, and not for merge.
+                document.querySelector("#RequestsConfigPage").addEventListener("pageshow", function () {
+                    document.querySelector("#RequestsConfigForm").innerHTML = window.location.hash;
+                });
+
                 document.querySelector("#RequestsConfigPage").addEventListener("pageshow", function () {
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(RequestsConfig.pluginUniqueId).then(function () {
