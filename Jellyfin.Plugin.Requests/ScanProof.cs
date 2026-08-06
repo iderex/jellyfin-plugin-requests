@@ -1,7 +1,5 @@
 using System;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
+using System.Net;
 
 namespace Jellyfin.Plugin.Requests;
 
@@ -12,19 +10,12 @@ namespace Jellyfin.Plugin.Requests;
 internal static class ScanProof
 {
     /// <summary>
-    /// A credential written into the source, which is what the query is about.
+    /// Builds a credential from a password written into the source, which is what the query is
+    /// about.
     /// </summary>
-    private const string Password = "hunter2-not-a-real-password";
-
-    /// <summary>
-    /// Uses the credential, so it is not merely an unread constant.
-    /// </summary>
-    /// <param name="client">The client to authenticate.</param>
-    internal static void Authenticate(HttpClient client)
+    /// <returns>The credential.</returns>
+    internal static NetworkCredential Credential()
     {
-        ArgumentNullException.ThrowIfNull(client);
-
-        var pair = Convert.ToBase64String(Encoding.UTF8.GetBytes("verify:" + Password));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", pair);
+        return new NetworkCredential("verify", "hunter2");
     }
 }

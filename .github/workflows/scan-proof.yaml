@@ -1,9 +1,12 @@
 # One planted finding, so the workflow leg of the scan can be seen finding one.
-# Deliberate, and not for merge. Manual trigger only, so nothing runs it.
+# Deliberate, and not for merge. The trigger has to be one that carries data an
+# outsider controls, because a shell interpolation of data nobody outside can
+# set is not the finding this is about.
 name: Scan proof
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: ['**']
 
 permissions: {}
 
