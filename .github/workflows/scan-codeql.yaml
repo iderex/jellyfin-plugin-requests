@@ -82,7 +82,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          queries: security-extended
+          queries: security-and-quality
 
       - name: Build for the analysis
         # Manual rather than autobuild, so the analysis is over what this
