@@ -1,0 +1,101 @@
+# Mutation testing, deliberately off the merge path.
+#
+# #29 asked whether this board wants mutation testing and fuzzing. Mutation
+# testing is adopted and fuzzing is declined, and both answers with their
+# reasoning are in `docs/quality-parity.md`. This file is the adopted half.
+#
+# It has no `pull_request` trigger and no `push` trigger, so no score it
+# produces can ever be a required check or hold a merge. That is the point
+# rather than an omission: a mutation score is a number that moves when tests
+# are added and when code is added, and a gate on it refuses work for a reason
+# nobody chose. What it is for is a report somebody reads.
+#
+# It also cannot fail on the score. `--break-at 0` is passed at the command, so
+# the step reds only when the run itself breaks.
+name: Mutation testing
+
+on:
+  # Weekly rather than nightly. The set of code worth mutating here is small and
+  # moves slowly, and a run nobody reads is a run that trains people to ignore
+  # the one that mattered.
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+  # Temporary, on this throwaway branch only. A workflow_dispatch trigger is not
+  # dispatchable until the file is on the default branch, so this is how the
+  # first run is produced. It is not in the change that lands.
+  push:
+    branches: [proof/29-mutation-run]
+
+# Explicit deny-all at workflow level; the job grants what it needs.
+permissions: {}
+
+env:
+  DOTNET_VERSIONS: |
+    9.0.x
+    10.0.x
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # Pinned, because an unpinned tool install makes two runs of the same commit
+  # two different measurements and neither says so.
+  STRYKER_VERSION: '4.16.0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutate:
+    name: mutate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, so do not leave the token in .git/config.
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSIONS }}
+
+      - name: Restore in locked mode
+        run: dotnet restore Jellyfin.Plugin.Requests.sln --locked-mode
+
+      - name: Install the mutation runner
+        # Into a path of its own rather than a tool manifest in the tree, because
+        # the manifest would be a fourth place holding a version and this job is
+        # the only thing that runs it.
+        run: dotnet tool install dotnet-stryker --version "$STRYKER_VERSION" --tool-path ./.stryker-tool
+
+      - name: Mutate the plugin project
+        # One target framework, not both. The plugin's source is one set of files
+        # compiled twice, so mutating it twice measures the same code against the
+        # same suite and doubles the run for no second answer. Which line the run
+        # used is in the report.
+        #
+        # --break-at 0 is what keeps this off the merge path even when somebody
+        # later makes this workflow required by mistake: the step cannot red on a
+        # low score, only on a run that did not happen.
+        run: |
+          ./.stryker-tool/dotnet-stryker \
+            --project Jellyfin.Plugin.Requests.csproj \
+            --test-project Jellyfin.Plugin.Requests.Tests/Jellyfin.Plugin.Requests.Tests.csproj \
+            --target-framework net10.0 \
+            --break-at 0 \
+            --reporter progress \
+            --reporter html \
+            --reporter json \
+            --output ./StrykerOutput
+
+      - name: Keep the report
+        # Always, because a run that broke is the run whose output somebody needs.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-report
+          path: ./StrykerOutput
+          if-no-files-found: warn
